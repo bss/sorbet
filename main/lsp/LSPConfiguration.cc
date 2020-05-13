@@ -15,10 +15,6 @@ constexpr string_view httpsScheme = "https"sv;
 
 namespace {
 
-string getRootPath(const options::Options &opts, const shared_ptr<spdlog::logger> &logger) {
-    return opts.rawInputDirNames.at(0);
-}
-
 MarkupKind getPreferredMarkupKind(vector<MarkupKind> formats) {
     if (find(formats.begin(), formats.end(), MarkupKind::Markdown) != formats.end()) {
         return MarkupKind::Markdown;
@@ -31,8 +27,12 @@ MarkupKind getPreferredMarkupKind(vector<MarkupKind> formats) {
 LSPConfiguration::LSPConfiguration(const options::Options &opts, const shared_ptr<LSPOutput> &output,
                                    const shared_ptr<spdlog::logger> &logger, bool skipConfigatron, bool disableFastPath)
     : initialized(atomic<bool>(false)), opts(opts), output(output), logger(logger), skipConfigatron(skipConfigatron),
-      disableFastPath(disableFastPath), rootPath(getRootPath(opts, logger)) {
-    if (opts.rawInputDirNames.size() == 0) {
+      disableFastPath(disableFastPath) {
+    if (opts.overrideLspWorkspaceRoot != "" && opts.rawInputDirNames.size() != 1) {
+        logger->error(
+            "Sorbet's language server requires a single input directory when used with --override-lsp-workspace-root");
+        throw options::EarlyReturnWithCode(1);
+    } else if (opts.rawInputDirNames.size() == 0) {
         logger->error("Sorbet's language server requires at least one input directory.");
         throw options::EarlyReturnWithCode(1);
     }
@@ -111,9 +111,9 @@ core::Loc LSPConfiguration::lspPos2Loc(const core::FileRef fref, const Position 
 }
 
 string LSPConfiguration::localName2Remote(string_view filePath) const {
-    ENFORCE(absl::StartsWith(filePath, rootPath));
+    ENFORCE(absl::StartsWith(filePath, workspaceRootPath()));
     assertHasClientConfig();
-    string_view relativeUri = filePath.substr(rootPath.length());
+    string_view relativeUri = filePath.substr(workspaceRootPath().length());
     if (relativeUri.at(0) == '/') {
         relativeUri = relativeUri.substr(1);
     }
@@ -125,7 +125,7 @@ string LSPConfiguration::localName2Remote(string_view filePath) const {
 
     // Use a sorbet: URI if the file is not present on the client AND the client supports sorbet: URIs
     if (clientConfig->enableSorbetURIs &&
-        FileOps::isFileIgnored(rootPath, filePath, opts.lspDirsMissingFromClient, {})) {
+        FileOps::isFileIgnored(workspaceRootPath(), filePath, opts.lspDirsMissingFromClient, {})) {
         return absl::StrCat(sorbetScheme, relativeUri);
     }
     return absl::StrCat(clientConfig->rootUri, "/", relativeUri);
@@ -152,8 +152,8 @@ string LSPConfiguration::remoteName2Local(string_view uri) const {
     if (isHttps) {
         // URL decode the :
         return absl::StrReplaceAll(path, {{"%3A", ":"}});
-    } else if (rootPath.length() > 0) {
-        return absl::StrCat(rootPath, "/", path);
+    } else if (workspaceRootPath().length() > 0) {
+        return absl::StrCat(workspaceRootPath(), "/", path);
     } else {
         // Special case: Folder is '' (current directory)
         return path;
@@ -224,7 +224,8 @@ vector<string> LSPConfiguration::frefsToPaths(const core::GlobalState &gs, const
 }
 
 bool LSPConfiguration::isFileIgnored(string_view filePath) const {
-    return FileOps::isFileIgnored(rootPath, filePath, opts.absoluteIgnorePatterns, opts.relativeIgnorePatterns);
+    return FileOps::isFileIgnored(workspaceRootPath(), filePath, opts.absoluteIgnorePatterns,
+                                  opts.relativeIgnorePatterns);
 }
 
 bool LSPConfiguration::isSorbetUri(string_view uri) const {
@@ -243,6 +244,14 @@ void LSPConfiguration::markInitialized() {
 
 bool LSPConfiguration::isInitialized() const {
     return initialized.load();
+}
+
+string LSPConfiguration::workspaceRootPath() const {
+    assertHasClientConfig();
+    if (opts.overrideLspWorkspaceRoot != "") {
+        return opts.overrideLspWorkspaceRoot;
+    }
+    return opts.rawInputDirNames.at(0);
 }
 
 const LSPClientConfiguration &LSPConfiguration::getClientConfig() const {

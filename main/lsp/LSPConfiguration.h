@@ -20,6 +20,7 @@ public:
     /** Root of LSP client workspace. May be different than rootPath. At Stripe, editing happens locally but Sorbet
      * runs on a remote server. */
     std::string rootUri = "";
+
     /**
      * If true, then LSP will send the client notifications at the start and end of slow operations.
      * We don't want to send these notifications to clients that don't know what to do with them,
@@ -81,8 +82,6 @@ public:
     const bool skipConfigatron;
     /** If true, all queries will hit the slow path. */
     const bool disableFastPath;
-    /** File system root of LSP client workspace. May be empty if it is the current working directory. */
-    const std::string rootPath;
 
     // The following properties are configured during initialization.
 
@@ -117,6 +116,9 @@ public:
      * actually within the workspace.
      */
     bool isUriInWorkspace(std::string_view uri) const;
+
+    // Workspace root URI of the client translated into the root path of the server.
+    std::string workspaceRootPath() const;
 };
 } // namespace sorbet::realmain::lsp
 #endif // RUBY_TYPER_LSPCONFIGURATION_H

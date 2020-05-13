@@ -1,0 +1,1 @@
+main/sorbet --silence-dev-message --lsp --disable-watchman --dir test/cli/lsp-overriden-work-space-root-multiple-input-dirs/dir_a test/cli/lsp-overriden-work-space-root-multiple-input-dirs/dir_b --override-lsp-workspace-root test/cli/lsp-overriden-work-space-root-multiple-input-dirs/dir_a 2>&1

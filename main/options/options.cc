@@ -361,6 +361,9 @@ buildOptions(const vector<pipeline::semantic_extension::SemanticExtensionProvide
         "Directory prefixes that are not accessible editor-side. References to files in these directories will be sent "
         "as sorbet: URIs to clients that understand them.",
         cxxopts::value<vector<string>>(), "string");
+    options.add_options("advanced")("override-lsp-workspace-root",
+                                    "Override server-side LSP workspace root to this path.",
+                                    cxxopts::value<string>()->default_value(empty.overrideLspWorkspaceRoot), "path");
     options.add_options("advanced")("no-error-count", "Do not print the error count summary line");
     options.add_options("advanced")("autogen-version", "Autogen version to output", cxxopts::value<int>());
     options.add_options("advanced")("stripe-mode", "Enable Stripe specific error enforcement", cxxopts::value<bool>());
@@ -694,6 +697,8 @@ void readOptions(Options &opts,
                 opts.lspDirsMissingFromClient.push_back(pNormalized);
             }
         }
+
+        opts.overrideLspWorkspaceRoot = raw["override-lsp-workspace-root"].as<string>();
 
         opts.cacheDir = raw["cache-dir"].as<string>();
         if (!extractPrinters(raw, opts, logger)) {

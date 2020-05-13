@@ -198,6 +198,8 @@ struct Options {
     bool lspDocumentSymbolEnabled = false;
     bool lspSignatureHelpEnabled = false;
 
+    std::string overrideLspWorkspaceRoot;
+
     std::string inlineInput; // passed via -e
     std::string debugLogFile;
     std::string webTraceFile;

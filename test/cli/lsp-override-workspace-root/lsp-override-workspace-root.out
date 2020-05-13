@@ -1,0 +1,7 @@
+Content-Length: 427
+
+{"jsonrpc":"2.0","id":0,"requestMethod":"initialize","result":{"capabilities":{"textDocumentSync":1,"hoverProvider":true,"completionProvider":{"triggerCharacters":["."]},"definitionProvider":true,"typeDefinitionProvider":true,"referencesProvider":true,"documentHighlightProvider":false,"documentSymbolProvider":false,"workspaceSymbolProvider":true,"codeActionProvider":{"codeActionKinds":["quickfix","source.fixAll.sorbet"]}}}}Content-Length: 195
+
+{"jsonrpc":"2.0","id":1,"requestMethod":"sorbet/readFile","result":{"uri":"file:///Users/jvilk/stripe/pay-server/dir_a/a.rb","languageId":"ruby","version":0,"text":"# typed: true\nclass A; end"}}Content-Length: 65
+
+{"jsonrpc":"2.0","id":2,"requestMethod":"shutdown","result":null}

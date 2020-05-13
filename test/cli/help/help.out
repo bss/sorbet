@@ -105,6 +105,9 @@ Usage:
                                 editor-side. References to files in these
                                 directories will be sent as sorbet: URIs to clients
                                 that understand them.
+      --override-lsp-workspace-root path
+                                Override server-side LSP workspace root to
+                                this path. (default: "")
       --no-error-count          Do not print the error count summary line
       --autogen-version arg     Autogen version to output
       --stripe-mode             Enable Stripe specific error enforcement
