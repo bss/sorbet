@@ -6,12 +6,28 @@
 #include "common/sort.h"
 #include "main/lsp/LSPConfiguration.h"
 #include "test/helpers/lsp.h"
+#include <filesystem>
 
 namespace sorbet::test {
 using namespace std;
 
+namespace {
+constexpr string_view fileScheme = "file://"sv;
+} // namespace
+
 string filePathToUri(const LSPConfiguration &config, string_view filePath) {
-    return fmt::format("{}/{}", config.getClientConfig().rootUri, filePath);
+    if (!absl::StartsWith(config.getClientConfig().rootUri, fileScheme)) {
+        FAIL_CHECK(fmt::format("Unrecognized root uri: `{}` does not start with `file://`.",
+                               config.getClientConfig().rootUri));
+        return "";
+    }
+
+    // Although filePath is always based off of the rootUri in tests, it won't nescesarily be normalized.
+    // E.g. filePath could be ./test/./testData/../testData2/ which wouldn't make much sense in a URI.
+    auto rootUriBasePath = std::filesystem::path(config.getClientConfig().rootUri.substr(fileScheme.length()));
+    auto normalizedPath = string((rootUriBasePath / std::filesystem::path(filePath)).lexically_normal());
+
+    return fmt::format("{}{}", fileScheme, normalizedPath);
 }
 
 string uriToFilePath(const LSPConfiguration &config, string_view uri) {

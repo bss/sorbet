@@ -11,6 +11,7 @@
 #include "test/helpers/expectations.h"
 #include "test/helpers/lsp.h"
 #include "test/helpers/position_assertions.h"
+#include <filesystem>
 
 namespace sorbet::test {
 namespace spd = spdlog;
@@ -270,8 +271,11 @@ TEST_CASE("LSPTest") {
     UnorderedSet<std::string> filenames;
     std::unique_ptr<LSPWrapper> lspWrapper;
 
+    /** Root path of the LSP server */
+    std::filesystem::path lspServerRootPath = std::filesystem::path("");
+
     /** Test expectations. */
-    Expectations test = Expectations::getExpectations(singleTest);
+    Expectations test = Expectations::getExpectations(lspServerRootPath / std::filesystem::path(singleTest));
 
     /** All test assertions ordered by (filename, range, message). */
     std::vector<std::shared_ptr<RangeAssertion>> assertions = RangeAssertion::parseAssertions(test.sourceFileContents);
@@ -287,7 +291,7 @@ TEST_CASE("LSPTest") {
     {
         shared_ptr<realmain::options::Options> opts = make_shared<realmain::options::Options>();
         opts->noStdlib = BooleanPropertyAssertion::getValue("no-stdlib", assertions).value_or(false);
-        lspWrapper = SingleThreadedLSPWrapper::create("", move(opts));
+        lspWrapper = SingleThreadedLSPWrapper::create(string(lspServerRootPath), move(opts));
         lspWrapper->enableAllExperimentalFeatures();
     }
 
@@ -309,7 +313,8 @@ TEST_CASE("LSPTest") {
 
     // Perform initialize / initialized handshake.
     {
-        string rootPath = fmt::format("/Users/{}/stripe/sorbet", std::getenv("USER"));
+        // The LSP client will always send a canonical path even if the path passed into the LSP server is relative.
+        string rootPath = std::filesystem::canonical(lspServerRootPath);
         string rootUri = fmt::format("file://{}", rootPath);
         auto sorbetInitOptions = make_unique<SorbetInitializationOptions>();
         sorbetInitOptions->enableTypecheckInfo = true;
