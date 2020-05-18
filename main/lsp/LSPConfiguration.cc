@@ -1,8 +1,10 @@
 #include "main/lsp/LSPConfiguration.h"
 #include "absl/strings/match.h"
 #include "absl/strings/str_replace.h"
+#include "absl/strings/strip.h"
 #include "common/FileOps.h"
 #include "main/lsp/json_types.h"
+#include <filesystem>
 
 using namespace std;
 
@@ -15,6 +17,15 @@ constexpr string_view httpsScheme = "https"sv;
 
 namespace {
 
+UnorderedMap<std::string, std::string> getCanonicalToRawInputDirMap(const options::Options &opts) {
+    UnorderedMap<std::string, std::string> ret;
+    for (auto inputDir : opts.rawInputDirNames) {
+        string canonicalInputDir = std::filesystem::canonical(inputDir);
+        ret[canonicalInputDir] = inputDir;
+    }
+    return ret;
+}
+
 MarkupKind getPreferredMarkupKind(vector<MarkupKind> formats) {
     if (find(formats.begin(), formats.end(), MarkupKind::Markdown) != formats.end()) {
         return MarkupKind::Markdown;
@@ -26,8 +37,8 @@ MarkupKind getPreferredMarkupKind(vector<MarkupKind> formats) {
 
 LSPConfiguration::LSPConfiguration(const options::Options &opts, const shared_ptr<LSPOutput> &output,
                                    const shared_ptr<spdlog::logger> &logger, bool skipConfigatron, bool disableFastPath)
-    : initialized(atomic<bool>(false)), opts(opts), output(output), logger(logger), skipConfigatron(skipConfigatron),
-      disableFastPath(disableFastPath) {
+    : initialized(atomic<bool>(false)), canonicalToRawInputDirMap(getCanonicalToRawInputDirMap(opts)), opts(opts),
+      output(output), logger(logger), skipConfigatron(skipConfigatron), disableFastPath(disableFastPath) {
     if (opts.overrideLspWorkspaceRoot != "" && opts.rawInputDirNames.size() != 1) {
         logger->error(
             "Sorbet's language server requires a single input directory when used with --override-lsp-workspace-root");
@@ -224,8 +235,12 @@ vector<string> LSPConfiguration::frefsToPaths(const core::GlobalState &gs, const
 }
 
 bool LSPConfiguration::isFileIgnored(string_view filePath) const {
+    // if (absl::StartsWith(filePath, workspaceRootPath())) {
     return FileOps::isFileIgnored(workspaceRootPath(), filePath, opts.absoluteIgnorePatterns,
                                   opts.relativeIgnorePatterns);
+    // }
+    // Ignore all files outside the main workspace root
+    // return true;
 }
 
 bool LSPConfiguration::isSorbetUri(string_view uri) const {
@@ -252,6 +267,13 @@ string LSPConfiguration::workspaceRootPath() const {
         return opts.overrideLspWorkspaceRoot;
     }
     return opts.rawInputDirNames.at(0);
+
+    auto clientRootPath = string(absl::StripPrefix(clientConfig->rootUri, "file://"));
+    auto rawInputDir = canonicalToRawInputDirMap.find(clientRootPath);
+    if (rawInputDir == canonicalToRawInputDirMap.end()) {
+        Exception::raise("Client root URI was not given as input path to LSP server and override was not provided.");
+    }
+    return rawInputDir->second;
 }
 
 const LSPClientConfiguration &LSPConfiguration::getClientConfig() const {

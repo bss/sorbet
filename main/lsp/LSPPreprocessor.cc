@@ -293,6 +293,7 @@ LSPPreprocessor::canonicalizeEdits(u4 v, unique_ptr<DidChangeTextDocumentParams>
     string_view uri = changeParams->textDocument->uri;
     if (config->isUriInWorkspace(uri)) {
         string localPath = config->remoteName2Local(uri);
+        config->logger->error("DidChangeTextDocumentParams: {}", localPath);
         if (!config->isFileIgnored(localPath)) {
             string fileContents = changeParams->getSource(getFileContents(localPath));
             auto file = make_shared<core::File>(move(localPath), move(fileContents), core::File::Type::Normal, v);
@@ -310,13 +311,20 @@ LSPPreprocessor::canonicalizeEdits(u4 v, unique_ptr<DidOpenTextDocumentParams> o
     string_view uri = openParams->textDocument->uri;
     if (config->isUriInWorkspace(uri)) {
         string localPath = config->remoteName2Local(uri);
+        config->logger->error("DidOpenTextDocumentParams: {}", localPath);
         if (!config->isFileIgnored(localPath)) {
+            config->logger->error("1");
             auto file = make_shared<core::File>(move(localPath), move(openParams->textDocument->text),
                                                 core::File::Type::Normal, v);
+            config->logger->error("2");
             edit->updates.push_back(file);
+            config->logger->error("3");
             openFiles[localPath] = move(file);
+            config->logger->error("4");
         }
+        config->logger->error("5");
     }
+    config->logger->error("6");
     return edit;
 }
 
@@ -327,6 +335,7 @@ LSPPreprocessor::canonicalizeEdits(u4 v, unique_ptr<DidCloseTextDocumentParams> 
     string_view uri = closeParams->textDocument->uri;
     if (config->isUriInWorkspace(uri)) {
         string localPath = config->remoteName2Local(uri);
+        config->logger->error("DidCloseTextDocumentParams: {}", localPath);
         if (!config->isFileIgnored(localPath)) {
             openFiles.erase(localPath);
             // Use contents of file on disk.

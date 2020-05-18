@@ -45,7 +45,7 @@ void updateDiagnostics(const LSPConfiguration &config, UnorderedMap<string, stri
         auto &diagnosticParams = *maybeDiagnosticParams;
         auto filename = uriToFilePath(config, diagnosticParams->uri);
         {
-            INFO(fmt::format("Diagnostic URI is not a test file URI: {}", diagnosticParams->uri));
+            INFO(fmt::format("Diagnostic URI is not a test file URI: {} ... {}", diagnosticParams->uri, filename));
             CHECK_NE(testFileUris.end(), testFileUris.find(filename));
         }
 

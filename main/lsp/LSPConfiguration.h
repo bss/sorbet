@@ -71,6 +71,9 @@ class LSPConfiguration {
     // Does the given URI correspond to a `sorbet:` URI?
     bool isSorbetUri(std::string_view uri) const;
 
+    // Lookup table for canonicalized input dirs
+    UnorderedMap<std::string, std::string> canonicalToRawInputDirMap;
+
 public:
     // The following properties are configured when the language server is created.
 
