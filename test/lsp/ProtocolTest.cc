@@ -3,6 +3,7 @@
 #include "test/helpers/MockFileSystem.h"
 #include "test/helpers/lsp.h"
 #include "test/helpers/position_assertions.h"
+#include <filesystem>
 
 using namespace std;
 
@@ -145,7 +146,8 @@ void ProtocolTest::resetState() {
 }
 
 ProtocolTest::ProtocolTest(bool useMultithreading, bool useCache)
-    : useMultithreading(useMultithreading), useCache(useCache), rootPath("/Users/jvilk/stripe/pay-server"),
+    : useMultithreading(useMultithreading), useCache(useCache),
+      rootPath("/Users/jvilk/stripe/pay-server"), // std::filesystem::canonical(".")),
       rootUri(fmt::format("file://{}", rootPath)) {
     resetState();
 }
@@ -165,21 +167,27 @@ vector<unique_ptr<LSPMessage>> ProtocolTest::initializeLSP(bool supportsMarkdown
     return responses;
 }
 
+string ProtocolTest::fullPath(std::string_view path) const {
+    return absl::StrCat(rootPath, "/", path);
+}
+
 string ProtocolTest::getUri(string_view filePath) {
-    return filePathToUri(lspWrapper->config(), filePath);
+    string fp = fullPath(filePath);
+    string uri = filePathToUri(lspWrapper->config(), fp);
+    return !absl::StartsWith(uri, "sorbet:") ? uri : absl::StrCat("file://", fp);
 }
 
 unique_ptr<LSPMessage> ProtocolTest::openFile(string_view path, string_view contents) {
-    sourceFileContents[string(path)] =
-        make_shared<core::File>(string(path), string(contents), core::File::Type::Normal);
+    sourceFileContents[fullPath(path)] =
+        make_shared<core::File>(fullPath(path), string(contents), core::File::Type::Normal);
     return makeOpen(getUri(path), contents, 1);
 }
 
 unique_ptr<LSPMessage> ProtocolTest::closeFile(string_view path) {
     // File is closed, so update contents from mock FS.
     try {
-        sourceFileContents[string(path)] =
-            make_shared<core::File>(string(path), string(fs->readFile(path)), core::File::Type::Normal);
+        sourceFileContents[fullPath(path)] =
+            make_shared<core::File>(fullPath(path), string(fs->readFile(path)), core::File::Type::Normal);
     } catch (FileNotFoundException e) {
         auto it = sourceFileContents.find(path);
         if (it != sourceFileContents.end()) {
@@ -191,8 +199,8 @@ unique_ptr<LSPMessage> ProtocolTest::closeFile(string_view path) {
 
 unique_ptr<LSPMessage> ProtocolTest::changeFile(string_view path, string_view newContents, int version,
                                                 bool cancellationExpected, int preemptionsExpected) {
-    sourceFileContents[string(path)] =
-        make_shared<core::File>(string(path), string(newContents), core::File::Type::Normal);
+    sourceFileContents[fullPath(path)] =
+        make_shared<core::File>(fullPath(path), string(newContents), core::File::Type::Normal);
     return makeChange(getUri(path), newContents, version, cancellationExpected, preemptionsExpected);
 }
 
@@ -222,8 +230,8 @@ unique_ptr<LSPMessage> ProtocolTest::watchmanFileUpdate(vector<string> updatedFi
 
 void ProtocolTest::writeFilesToFS(vector<pair<string, string>> files) {
     for (auto &file : files) {
-        sourceFileContents[file.first] =
-            make_shared<core::File>(string(file.first), string(file.second), core::File::Type::Normal);
+        sourceFileContents[fullPath(file.first)] =
+            make_shared<core::File>(fullPath(file.first), string(file.second), core::File::Type::Normal);
     }
     fs->writeFiles(files);
 }
@@ -320,8 +328,8 @@ std::string ProtocolTest::readFile(std::string_view uri) {
     return "";
 }
 
-vector<unique_ptr<Location>> ProtocolTest::getDefinitions(std::string_view uri, int line, int character) {
-    auto defResponses = send(*getDefinition(uri, line, character));
+vector<unique_ptr<Location>> ProtocolTest::getDefinitions(std::string_view path, int line, int character) {
+    auto defResponses = send(*getDefinition(path, line, character));
     CHECK_EQ(defResponses.size(), 1);
     if (defResponses.size() == 1) {
         auto &defResponse = defResponses.at(0);
@@ -344,7 +352,7 @@ void ProtocolTest::assertDiagnostics(vector<unique_ptr<LSPMessage>> messages, ve
     vector<shared_ptr<ErrorAssertion>> errorAssertions;
     for (auto e : expected) {
         auto range = RangeAssertion::makeRange(e.line);
-        errorAssertions.push_back(ErrorAssertion::make(e.path, range, e.line, e.message, "error"));
+        errorAssertions.push_back(ErrorAssertion::make(fullPath(e.path), range, e.line, e.message, "error"));
     }
 
     // Use same logic as main test runner.

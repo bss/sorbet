@@ -272,10 +272,10 @@ TEST_CASE("LSPTest") {
     std::unique_ptr<LSPWrapper> lspWrapper;
 
     /** Root path of the LSP server */
-    std::filesystem::path lspServerRootPath = std::filesystem::path("");
+    std::string lspServerRootPath = ".";
 
     /** Test expectations. */
-    Expectations test = Expectations::getExpectations(lspServerRootPath / std::filesystem::path(singleTest));
+    Expectations test = Expectations::getExpectations(lspServerRootPath + "/" + singleTest);
 
     /** All test assertions ordered by (filename, range, message). */
     std::vector<std::shared_ptr<RangeAssertion>> assertions = RangeAssertion::parseAssertions(test.sourceFileContents);

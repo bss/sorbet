@@ -74,6 +74,8 @@ protected:
     initializeLSP(bool supportsMarkdown = true,
                   std::optional<std::unique_ptr<SorbetInitializationOptions>> opts = std::nullopt);
 
+    std::string fullPath(std::string_view path) const;
+
     std::unique_ptr<LSPMessage> openFile(std::string_view path, std::string_view contents);
 
     std::unique_ptr<LSPMessage> closeFile(std::string_view path);
