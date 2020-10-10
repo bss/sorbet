@@ -135,6 +135,9 @@ void ProtocolTest::resetState() {
         }
         opts->cacheDir = cacheDir;
     }
+    for(auto extraPath : additionalInputDirectories) {
+        opts->rawInputDirNames.emplace_back(extraPath);
+    }
 
     if (useMultithreading) {
         lspWrapper = MultiThreadedLSPWrapper::create(rootPath, opts);
@@ -146,8 +149,7 @@ void ProtocolTest::resetState() {
 }
 
 ProtocolTest::ProtocolTest(bool useMultithreading, bool useCache)
-    : useMultithreading(useMultithreading), useCache(useCache),
-      rootPath("/Users/jvilk/stripe/pay-server"), // std::filesystem::canonical(".")),
+    : useMultithreading(useMultithreading), useCache(useCache), rootPath(std::filesystem::canonical(".")),
       rootUri(fmt::format("file://{}", rootPath)) {
     resetState();
 }

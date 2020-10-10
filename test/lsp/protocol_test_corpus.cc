@@ -9,7 +9,7 @@
 namespace sorbet::test::lsp {
 using namespace std;
 using namespace sorbet::realmain::lsp;
-
+/*
 // Adds two new files that have errors, and asserts that Sorbet returns errors for both of them.
 TEST_CASE_FIXTURE(ProtocolTest, "AddFile") {
     assertDiagnostics(initializeLSP(), {});
@@ -448,7 +448,8 @@ TEST_CASE_FIXTURE(ProtocolTest, "SilentlyIgnoresInvalidJSONMessages") {
 
 // If a client doesn't support markdown, send hover as plaintext.
 TEST_CASE_FIXTURE(ProtocolTest, "RespectsHoverTextLimitations") {
-    assertDiagnostics(initializeLSP(false /* supportsMarkdown */), {});
+    assertDiagnostics(initializeLSP(false), {});
+    //   supportsMarkdown -----------^
 
     assertDiagnostics(send(*openFile("foobar.rb", "# typed: true\n1\n")), {});
 
@@ -464,7 +465,7 @@ TEST_CASE_FIXTURE(ProtocolTest, "RespectsHoverTextLimitations") {
     auto &contents = hover->contents;
     REQUIRE_EQ(contents->kind, MarkupKind::Plaintext);
     REQUIRE_EQ(contents->value, "Integer(1)");
-}
+} // namespace sorbet::test::lsp
 
 // Tests that Sorbet returns sorbet: URIs for payload references & files not on client, and that readFile works on
 // them.
@@ -540,6 +541,34 @@ TEST_CASE_FIXTURE(ProtocolTest, "DoesNotCrashOnNonWorkspaceURIs") {
         make_unique<DidOpenTextDocumentParams>(make_unique<TextDocumentItem>(fileUri, "ruby", 1, "# typed: true\n1\n"));
     auto didOpenNotif = make_unique<NotificationMessage>("2.0", LSPMethod::TextDocumentDidOpen, move(didOpenParams));
     getLSPResponsesFor(*lspWrapper, make_unique<LSPMessage>(move(didOpenNotif)));
+}
+*/
+
+TEST_CASE_FIXTURE(ProtocolTest, "MultiInputDir") {
+    rootPath = std::filesystem::canonical("test");
+    rootUri = fmt::format("file://{}", rootPath);
+    additionalInputDirectories = {"../"};
+    resetState();
+
+    assertDiagnostics(initializeLSP(), {});
+
+    CHECK_EQ(1, 2);
+
+    // Test plan:
+    // 1. Setup server with multiple input dirs
+    // 2. Initialize it with a one of the inputs as root.
+    // 3. Send `sorbet/readFile` for a file in non-root input, expect to tell me it cannot find the file.
+    // 4. Send `sorbet/readFile` for a file in root input, expect to return file content.
+    //
+    // Additional stuff:
+    // - Also do a multithreaded test for this.
+
+    // # Read a file that is not supposed to be in the $WORKSPACE_DIR
+    // send_msg
+    // "{\"jsonrpc\":\"2.0\",\"id\":1,\"method\":\"sorbet/readFile\",\"params\":{\"uri\":\"file://$WORKSPACE_DIR/a.rb\"}}"
+    // # And one that is $WORKSPACE_DIR
+    // send_msg
+    // "{\"jsonrpc\":\"2.0\",\"id\":1,\"method\":\"sorbet/readFile\",\"params\":{\"uri\":\"file://$WORKSPACE_DIR/b.rb\"}}"
 }
 
 } // namespace sorbet::test::lsp

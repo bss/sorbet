@@ -47,6 +47,9 @@ LSPConfiguration::LSPConfiguration(const options::Options &opts, const shared_pt
         logger->error("Sorbet's language server requires at least one input directory.");
         throw options::EarlyReturnWithCode(1);
     }
+    for (auto inputDir : opts.rawInputDirNames) {
+        logger->error("input dir: {}", inputDir);
+    }
 }
 
 void LSPConfiguration::assertHasClientConfig() const {
@@ -266,13 +269,23 @@ string LSPConfiguration::workspaceRootPath() const {
     if (opts.overrideLspWorkspaceRoot != "") {
         return opts.overrideLspWorkspaceRoot;
     }
-    return opts.rawInputDirNames.at(0);
+    if (clientConfig->rootUri == "") {
+        // Monaco provides an empty rooUri. Since it doesn't work with multiple input directories, we can just return
+        // the first raw input directory.
+        return opts.rawInputDirNames.at(0);
+    }
+    logger->error("clientConfig->rootUri: `{}`", clientConfig->rootUri);
+    logger->error("old: {}", opts.rawInputDirNames.at(0));
+    for (auto &a : canonicalToRawInputDirMap) {
+        logger->error(".. canonicalToRawInputDirMap[`{}`] = `{}`", a.first, a.second);
+    }
 
     auto clientRootPath = string(absl::StripPrefix(clientConfig->rootUri, "file://"));
     auto rawInputDir = canonicalToRawInputDirMap.find(clientRootPath);
     if (rawInputDir == canonicalToRawInputDirMap.end()) {
         Exception::raise("Client root URI was not given as input path to LSP server and override was not provided.");
     }
+    logger->error("new: {}", rawInputDir->second);
     return rawInputDir->second;
 }
 

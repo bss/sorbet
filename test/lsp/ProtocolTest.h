@@ -48,6 +48,7 @@ protected:
     std::string rootPath;
     std::string rootUri;
     std::string cacheDir;
+    std::vector<std::string> additionalInputDirectories;
     // Contains the current source file contents. Used to print pretty error messages.
     // TODO(jvilk): Remove and instead get state from Sorbet directly. Will be hard to maintain
     // once we test incremental diffs.
