@@ -69,6 +69,7 @@ const vector<PrintOptions> print_options({
     {"autogen-autoloader", &Printers::AutogenAutoloader, true, false},
     {"autogen-subclasses", &Printers::AutogenSubclasses, true},
     {"package-tree", &Printers::Packager},
+    {"constant-references-json", &Printers::ConstantReferencesJson},
 });
 
 PrinterConfig::PrinterConfig() : state(make_shared<GuardedState>()){};

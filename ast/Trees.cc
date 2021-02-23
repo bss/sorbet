@@ -436,6 +436,11 @@ string ClassDef::toStringWithTabs(const core::GlobalState &gs, int tabs) const {
         fmt::format_to(buf, "module ");
     } else {
         fmt::format_to(buf, "class ");
+        auto symbol = this->symbol.data(gs);
+        auto file = symbol->loc().file();
+        if (file.exists()) {
+            fmt::format_to(buf, "({}) ", file.data(gs).path());
+        }
     }
     fmt::format_to(buf, "{}<{}> < ", name.toStringWithTabs(gs, tabs),
                    this->symbol.dataAllowingNone(gs)->name.toString(gs));

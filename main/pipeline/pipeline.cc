@@ -782,6 +782,47 @@ ast::ParsedFilesOrCancelled resolve(unique_ptr<core::GlobalState> &gs, vector<as
     return ast::ParsedFilesOrCancelled(move(what));
 }
 
+string printConstantReferences(const core::GlobalState &gs, core::SymbolRef sym) {
+    auto data = sym.data(gs);
+
+    if (data->isClassOrModule()) {
+        auto file = data->loc().file();
+        if (file.exists()) {
+            cout << data->name.toString(gs) << ": ";
+            cout << file.data(gs).path();
+            cout << "\n";
+        }
+    } else if (data->isStaticField()) {
+        auto file = data->loc().file();
+        if (file.exists()) {
+            cout << data->name.toString(gs) << ": ";
+            cout << file.data(gs).path();
+            cout << "\n";
+        }
+    }
+
+    for (auto pair : data->membersStableOrderSlow(gs)) {
+        if (pair.first == core::Names::singleton() || pair.first == core::Names::attached() ||
+            pair.first == core::Names::mixedInClassMethods() || pair.first == core::Names::Constants::AttachedClass()) {
+            continue;
+        }
+
+        if (!pair.second.exists()) {
+            continue;
+        }
+
+        // if (!showFull && !pair.second.data(gs)->isPrintable(gs)) {
+        //     continue;
+        // }
+
+        // *symbolProto.add_children() = toProto(gs, pair.second, showFull);
+        printConstantReferences(gs, pair.second);
+    }
+
+    // return data->name.toString(gs);
+    return "";
+}
+
 ast::ParsedFilesOrCancelled typecheck(unique_ptr<core::GlobalState> &gs, vector<ast::ParsedFile> what,
                                       const options::Options &opts, WorkerPool &workers, bool cancelable,
                                       optional<shared_ptr<core::lsp::PreemptionTaskManager>> preemptionManager,
@@ -917,6 +958,9 @@ ast::ParsedFilesOrCancelled typecheck(unique_ptr<core::GlobalState> &gs, vector<
         }
         if (opts.print.SymbolTableRaw.enabled) {
             opts.print.SymbolTableRaw.fmt("{}\n", gs->showRaw());
+        }
+        if (opts.print.ConstantReferencesJson.enabled) {
+            opts.print.ConstantReferencesJson.fmt("{}\n", printConstantReferences(*gs, core::Symbols::root()));
         }
 
 #ifndef SORBET_REALMAIN_MIN
